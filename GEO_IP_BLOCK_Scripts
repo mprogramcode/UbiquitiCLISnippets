@@ -1,0 +1,153 @@
+These commands creates a new network group
+config
+set firewall group network-group IP_BLOCKS description 'IP_COUNTRY_Blocks'
+commit;save;exit
+
+These commnads add IP ranges to the network group
+configure
+set firewall group network-group IP_BLOCKS network 1.0.0.0/24
+set firewall group network-group IP_BLOCKS network 1.0.1.0/24
+commit;save;exit
+
+To get to scripts in edge router:
+cd /config/scripts
+
+Gets a list of ipset commands:
+sudo ipset help
+
+Create network group:
+configure
+set firewall group network-group Nets4-BlackList
+
+Add to ipset rules:
+sudo ipset -exist add Nets4-BlackList 2.0.0.0/24
+
+Delete from ipset rules:
+sudo ipset -exist del Nets4-BlackList 1.0.0.0/24
+
+list ip ranges in ipset:
+sudo ipset list Nets4-BlackList
+
+removes all entries from an ipset list:
+sudo ipset flush Nets4-BlackList
+
+Access the file editor:
+Vi filename
+
+Quit without saving
+press esc + :q!
+
+Quit and save
+press esc + :wq
+
+Next line
+press esc + o
+
+delete single character under cursor
+press esc + x
+
+**********************Creating An IP Block Script***************
+Create a network group
+configure
+set firewall group network-group Nets4-BlackList
+commit
+save
+exit
+
+login into router console using a web browser
+Go to Firewall/Nat>Firewall-Policies>WAN_IN>Actions>Edit Ruleset
+Add Rule>Description
+type Block_Countries
+Check Enable
+Action drop
+Protocol All protocols
+Advanced
+State Check Established, New, Related
+Source Check select address group then Nets4-BlackList
+Destination leave blank
+save rule
+Make sure the rule is at the top of the list of firewall rules
+
+On the router go to
+cd /config/scripts
+vi addipblock.sh
+enter the following code into the vi editor and save (do this if multiple ip lists are loaded):
+for i in `cat /config/scripts/countryblockips.txt|egrep '^[0-9]'|egrep '/'`;
+do ipset -exist add Nets4-Blacklist $i;
+done
+chmod 777 addipblock.sh
+
+upload the countryblockips.txt script using filezilla type one
+ip range per line example
+1.0.0.0/24
+2.0.0.0/24
+host:routerip
+enter routers username
+enter routers password
+port 22
+quickconnect
+
+once the file has been uploaded to the router run the following command and save the
+file in dos2unix this removes any symbols or text which might not work with
+the routers linux os
+dos2unix countryblockip.txt
+save
+
+run this command to load blacklist into routers firewall.
+cd /config/scripts
+sudo ./addipblock.sh
+
+run this command to verify that the ips have been added to the list
+sudo ipset list Nets4-BlackList
+
+******************************For IPV6 Firewall Configure*****************
+configure
+set firewall group ipv6-network-group Nets6-BlackList description 'Blacklisted IPv6 Sources'
+edit firewall ipv6-name WANv6_IN
+set rule 1 description "IPV6 Country Block"
+set rule 1 action drop
+set rule 1 protocol all
+set rule 1 source group ipv6-network-group Nets6-BlackList
+save
+commit
+save
+exit
+
+After the load script has run use this command to see if the ipv6
+rules have been added to the firewall
+sudo ipset list Nets6-BlackList
+
+run this command to configure the router to run the addipblock.sh
+when the router is rebooted (this has to be done because ipset tables
+are erased once the router reboots)
+crontab -e
+go to the bottom press o to insert a new line at the bottom type
+@reboot sleep 180 && sudo /config/scripts/addipblock.sh
+to save type :wq
+
+Example contab config file:
+
+ Edit this file to introduce tasks to be run by cron.
+#
+# Each task to run has to be defined through a single line
+# indicating with different fields when the task will be run
+# and what command to run for the task
+#
+# To define the time you can provide concrete values for
+# minute (m), hour (h), day of month (dom), month (mon),
+# and day of week (dow) or use '*' in these fields (for 'any').#
+# Notice that tasks will be started based on the cron's system
+# daemon's notion of time and timezones.
+#
+# Output of the crontab jobs (including errors) is sent through
+# email to the user the crontab file belongs to (unless redirected).
+#
+# For example, you can run a backup of all your user accounts
+# at 5 a.m every week with:
+# 0 5 * * 1 tar -zcf /var/backups/home.tgz /home/
+#
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+@reboot sleep 180 && sudo /config/scripts/addipblock.sh
+- /tmp/crontab.AB51ew/crontab 1/23 4%
