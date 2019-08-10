@@ -46,7 +46,7 @@ press esc + o
 delete single character under cursor
 press esc + x
 
-**********************Creating An IP Block Script***************
+**********************Creating An IPV4 Block Script***************
 Create a network group
 configure
 set firewall group network-group Nets4-BlackList
